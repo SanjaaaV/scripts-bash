@@ -1,0 +1,425 @@
+{\rtf1\ansi\deff0\nouicompat{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fnil Calibri;}}
+{\colortbl ;\red155\green0\blue211;}
+{\*\generator Riched20 10.0.19041}\viewkind4\uc1 
+\pard\sa200\sl276\slmult1\cf1\ul\b\f0\fs28\lang9 Script 1.1.\cf0\fs22\par
+\ulnone\b0 #!/bin/bash\par
+tdir=$1\par
+if [ $# -lt 1 ]; then\par
+        echo There are no argument.\par
+        exit\par
+fi\par
+if [ $# -gt 1 ]; then\par
+       echo There are more aguments than 1.\par
+       exit\par
+fi\par
+if [ $PWD -ef $tdir ]; then\par
+        echo Directory is current directory.\par
+        exit\par
+fi\par
+if [ ! -d $tdir ]; then\par
+        echo Directory does not exist.\par
+        exit\par
+fi\par
+sizeblock=$(sudo blockdev --getbsz /dev/sda2)\par
+sizedir=$(du -s --bytes $tdir | awk '\{print $1\}')\par
+deljenje=$(($sizedir%$sizeblock))\par
+if [ $deljenje -eq 0 ]; then\par
+        sizedirblock=$(($sizedir/$sizeblock))\par
+else\par
+         sizedirblock=$(($sizedir/$sizeblock+1))\par
+fi\par
+if [ "$sizedirblock" -gt 10 ]; then\par
+  echo "Directory size is bigger than 10.You want to continue?y/n"\par
+fi\par
+read odobrenje\par
+if [ "$odobrenje" = n ]; then\par
+        exit\par
+fi\par
+perm=$(ls -ld $PWD | awk '\{print $1\}' | cut -b 3)\par
+if [ $perm != w ]; then\par
+        echo "You do not have permission to modify current directory."\par
+        exit\par
+fi\par
+sizetar=$(tar -zcvf $tdir.tar $tdir | du -s --bytes  | awk '\{print $1\}')\par
+availsize=$(free -b | grep -i mem | awk '\{print $4\}')\par
+if [ $sizetar -gt $availsize ];then\par
+        echo "You do not have enough space on current directory."\par
+        exit\par
+else\par
+        tar -zcvf $tdir.tar $tdir\par
+fi\par
+\par
+\cf1\ul\b\fs28 Script 1.2.\cf0\fs22\par
+\ulnone\b0 #!/bin/bash\par
+echo "Your username for git account?"\par
+read userNamegit\par
+git config --global user.name $userNamegit\par
+echo "Your email for git account?"\par
+read userEmailgit\par
+git config --global user.email $userEmailgit\par
+echo "Which editor you want to use?"\par
+read userEditorgit\par
+git config --global core.editor $userEditorgit\par
+echo "Would you like to create alias?y/n"\par
+read YNAlias\par
+while [ "$YNAlias" = y ]\par
+do\par
+        echo "Type git-command:"\par
+        read gitCommand\par
+        echo "Type git-alias:"\par
+        read gitAlias\par
+        git config --global alias.$gitAlias $gitCommand\par
+        echo "Would you like to create alias?y/n"\par
+        read YNAlias\par
+done\par
+exit\par
+\par
+\cf1\ul\b\fs28 Script 2\cf0\fs22\par
+\ulnone\b0 #!/bin/bash\par
+echo "Choose your environment:\par
+0 \f1\endash  artifactory\par
+1 \endash  nexus\par
+2 \endash  docker-compose\par
+Abort operation: \ldblquote .\rdblquote  "\par
+read choice\par
+if [  "$choice" = \\. ]; then\par
+        exit\par
+fi\par
+if [ "$choice" -eq 0 ]; then\par
+        cd ~/tgengo_lab/artifactory\par
+elif [ "$choice" -eq 1 ]; then\par
+        cd ~/tgengo_lab/nexus\par
+elif [  "$choice" -eq 2 ]; then\par
+         cd ~/tgengo_lab/docker-compose\par
+fi\par
+echo "Type name  for your workspace:\par
+(You can use: letters-small and capitals, numbers, underscore, and dash signs)"\par
+read nameWorkspace\par
+\par
+mkdir $nameWorkspace\par
+cd $nameWorkspace\par
+git init\par
+\par
+echo "Would you like to stay on master branch?y/n"\par
+read masterChoice\par
+if [ "$masterChoice" = n ]; then\par
+        echo "Type name of the new branch:"\par
+        read nameNew\par
+        git checkout -b "$nameNew"\par
+fi\par
+find . -maxdepth 3 '!' -name '.git' '!'  -name '.*' > fileforlinks.txt\par
+while read p;\par
+do\par
+ln -s "$p" "$p".slink\par
+done < $PWD/fileforlinks.txt\par
+echo "Your workspace is created.\par
+Location: $PWD\par
+Available memory(Gigabyte): $(free -m | grep -i mem | awk '\{print $4\}')\par
+Number of running processes: $(ps -e | wc -l)\par
+"\par
+\par
+\cf1\ul\b\f0\fs28\lang1033 Script 3.1.\cf0\ulnone\b0\par
+\fs22 #!/bin/bash\par
+option1=$1\par
+option2=$2\par
+if [ "$option1" = '-h' ] || [ "$option1" = "" ]; then\par
+        echo "\par
+        Help:\par
+\par
+        Remove exited containers (-c)\par
+\par
+        Remove unused images (-i)\par
+\par
+        Remove unused volumes (-v)\par
+\par
+        Remove all above (-all)\par
+\par
+        Type '-dry-run' as second argument to see explanation for option.\par
+ ______________________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+Unused images:\par
+        $(sudo docker images -f dangling=true)\par
+Unused volumes:\par
+        $(sudo docker volume ls --filter 'dangling=true')"\par
+fi\par
+\par
+#C\par
+if [ "$option1" = '-c' ] && [ "$option2" = "" ];then\par
+        echo "This option will remove all exited containers.\par
+\par
+__________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+_________________________________________________\par
+         Are you sure you want to continue?y/n"\par
+\par
+        read econ\par
+        if [ "$econ" = y ];then\par
+         sudo docker rm $(sudo docker ps -q -f status=exited)\par
+        echo "\par
+__________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+_________________________________________________"\par
+\par
+        elif [ "$econ" = n ];then\par
+        exit\par
+        fi\par
+\par
+fi\par
+if [ "$option1" = '-c' ] && [ "$option2" = '-dry-run' ];then\par
+        echo "This option removes all exited containers.\par
+_________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+_________________________________________________\par
+         You want to proceed?y/n"\par
+         read proceedEC\par
+        if [ "$proceedEC" = y ]; then\par
+        echo " Are you sure you want to remove exited containers?y/n"\par
+        read EC\par
+                if [ "$EC" = y ]; then\par
+                 sudo docker rm $(sudo docker ps -q -f status=exited)\par
+                echo "\par
+__________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+_________________________________________________"\par
+\par
+                elif [ "$EC" = n ];then\par
+                exit\par
+                fi\par
+         elif [ "$proceedEC" = n ];then\par
+         exit\par
+         fi\par
+fi\par
+\par
+#I\par
+if [ "$option1" = '-i' ] && [ "$option2" = "" ];then\par
+        echo "This option will remove all unused images.\par
+\par
+__________________________________________________\par
+Unused images:\par
+         $(sudo docker images -f dangling=true)\par
+_________________________________________________\par
+         Are you sure you want to continue?y/n"\par
+\par
+        read uimg\par
+        if [ "$uimg" = y ];then\par
+        sudo docker image prune\par
+        echo "\par
+________________________________________________\par
+Unused images:\par
+         $(sudo docker images -f dangling=true)\par
+_________________________________________________"\par
+\par
+        elif [ "$uimg" = n ];then\par
+        exit\par
+        fi\par
+\par
+\par
+fi\par
+if [ "$option1" = '-i' ] && [ "$option2" = '-dry-run' ];then\par
+        echo "This option removes all unused images.\par
+_________________________________________________\par
+Unused images:\par
+          $(sudo docker images -f "dangling=true")\par
+_________________________________________________\par
+         You want to proceed?y/n"\par
+         read proceedUI\par
+        if [ "$proceedUI" = y ]; then\par
+        echo " Are you sure you want to remove all unused images?y/n"\par
+        read UI\par
+                if [ "$UI" = y ]; then\par
+                 sudo docker image prune\par
+                 echo "\par
+__________________________________________________\par
+Unused images:\par
+          $(sudo docker images -f dangling=true)\par
+_________________________________________________"\par
+\par
+                 elif [ "$UI" = n ];then\par
+                 exit\par
+                 fi\par
+         elif [ "$proceedUI" = n ];then\par
+         exit\par
+         fi\par
+fi\par
+\par
+\par
+#V\par
+if [ "$option1" = '-v' ] && [ "$option2" = "" ];then\par
+        echo "This option will remove all unused volumes.\par
+\par
+__________________________________________________\par
+Unused volumes:\par
+         $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________\par
+         Are you sure you want to continue?y/n"\par
+\par
+        read uvol\par
+        if [ "$uvol" = y ];then\par
+        sudo docker volume prune\par
+        echo "\par
+________________________________________________\par
+Unused volumes:\par
+         $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________"\par
+\par
+        elif [ "$uvol" = n ];then\par
+        exit\par
+        fi\par
+\par
+\par
+fi\par
+if [ "$option1" = '-v' ] && [ "$option2" = '-dry-run' ];then\par
+        echo "This option removes all unused volumes.\par
+_________________________________________________\par
+Unused volumes:\par
+          $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________\par
+         You want to proceed?y/n"\par
+         read proceedUV\par
+        if [ "$proceedUV" = y ]; then\par
+        echo " Are you sure you want to remove all unused volumes?y/n"\par
+        read UV\par
+                if [ "$UV" = y ]; then\par
+                 sudo docker volume prune\par
+                 echo "\par
+__________________________________________________\par
+Unused volumes:\par
+          $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________"\par
+\par
+                 elif [ "$UV" = n ];then\par
+                 exit\par
+                 fi\par
+         elif [ "$proceedUV" = n ];then\par
+         exit\par
+         fi\par
+fi\par
+\par
+\par
+#ALL\par
+if [ "$option1" = '-all' ] && [ "$option2" = "" ];then\par
+        echo "This option will removes all exited containers and unused images and volumes.\par
+\par
+__________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+Unused images:\par
+        $(sudo docker images -f dangling=true)\par
+Unused volumes:\par
+         $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________\par
+         Are you sure you want to continue?y/n"\par
+\par
+        read uvol\par
+        if [ "$all" = y ];then\par
+         sudo docker rm $(sudo docker ps -q -f status=exited)\par
+        sudo docker image prune\par
+        sudo docker volume prune\par
+        echo "\par
+________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+Unused images:\par
+        $(sudo docker images -f dangling=true)\par
+Unused volumes:\par
+         $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________"\par
+\par
+        elif [ "$all" = n ];then\par
+        exit\par
+        fi\par
+\par
+\par
+fi\par
+if [ "$option1" = '-all' ] && [ "$option2" = '-dry-run' ];then\par
+        echo "This option remove all exited containers and unused images and volumes.\par
+_________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+Unused images:\par
+        $(sudo docker images -f dangling=true)\par
+Unused volumes:\par
+          $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________\par
+         You want to proceed?y/n"\par
+         read proceedALL\par
+        if [ "$proceedALL" = y ]; then\par
+        echo " Are you sure you want to remove all exited containers and unused volumes and images?y/n"\par
+        read ALL\par
+                if [ "$ALL" = y ]; then\par
+                  sudo docker rm $(sudo docker ps -q -f status=exited)\par
+                 sudo docker image prune\par
+                 sudo docker volume prune\par
+                 echo "\par
+__________________________________________________\par
+Exited containers:\par
+         $(sudo docker ps -f status=exited)\par
+Unused images:\par
+        $(sudo docker images -f dangling=true)\par
+Unused volumes:\par
+          $(sudo docker volume ls -f dangling=true)\par
+_________________________________________________"\par
+\par
+                 elif [ "$ALL" = n ];then\par
+                 exit\par
+                 fi\par
+         elif [ "$proceedALL" = n ];then\par
+         exit\par
+         fi\par
+fi\par
+\par
+\cf1\ul\b\fs28 Script 3.2.\cf0\par
+\ulnone\b0\fs22 #!/bin/bash\par
+\par
+confFile=$1\par
+storeDir=$2\par
+\par
+if [ $# -eq 0 ]; then\par
+        echo "There are no arguments."\par
+        exit\par
+fi\par
+\par
+if [ "$storeDir" = "" ]; then\par
+\par
+currtime=$(date "+%T_%d-%m-%y")\par
+ echo "$currtime"\par
+zip /remote_homes/svukelic/$currtime $(grep .log$ $confFile | grep ^[^#])\par
+\par
+\par
+\par
+grep ^[^#] $confFile | grep -v .log$ > dirfiles.txt\par
+\par
+while read p;\par
+do\par
+        currtimeD=$(date "+%T_%d-%m-%y")\par
+         echo "$currtimeD"\par
+        zip /remote_homes/svukelic/D"$currtimeD" $(find $p -mmin +3000)\par
+done < dirfiles.txt\par
+\par
+\par
+\par
+\par
+else\par
+        currtime=$(date "+%T_%d-%m-%y")\par
+echo "$currtime"\par
+zip $storeDir/$currtime $(grep .log$ $confFile | grep ^[^#])\par
+\par
+\par
+\par
+grep ^[^#] $confFile | grep -v .log$ > dirfiles.txt\par
+cat dirfiles.txt\par
+while read p;\par
+do\par
+       currtimeD=$(date "+%T_%d-%m-%y")\par
+        echo "$currtimeD"\par
+        zip $storeDir/D"$currtimeD" $(find $p -mmin +3000)\par
+done < dirfiles.txt\par
+\par
+fi\ul\b\lang9\par
+}
+ 

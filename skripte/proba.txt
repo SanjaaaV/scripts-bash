@@ -1,0 +1,24 @@
+sizetar=$(tar -zcvf $tdir.tar $tdir | ls -l --block-size=G | awk '{print $5}' | awk -F 'G' '{print $1}')
+available=$(df -h --output=avail $PWD | awk '/G/ {print}' | awk -F 'G' '{print $1}')
+if [ $sizetar -gt $available]; then
+        echo "You do not have enough space."
+        exit
+fi
+
+
+ tar -zcvf $tdir.tar $tdir 
+
+sizeblock=$(sudo blockdev --getbsz /dev/sda2)
+
+sizedir=$(ls -nl $tdir | awk '{print $5}')
+
+ df $PWD -P --total | grep 'total' | awk '{print $4}'
+
+
+
+
+
+
+date "+%T_%d-%m-%y"   trenutno vreme
+
+stat --format='%Y' file.txt    -vreme u sekundama od poslednje modifikacije
